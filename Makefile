@@ -2,12 +2,26 @@ build:
 	stack build --profile --work-dir .stack-work-profile
 .PHONY: build
 
-run: tmp-dir
-	stack exec --work-dir .stack-work-profile -- conduit-memory-test 0 60000 +RTS -hc
-	mv conduit-memory-test.hp conduit-memory-test-0-60000.hp
-	hp2ps -c conduit-memory-test-0-60000
-	mv conduit-memory-test-0-60000.* tmp/
+PROFILES := 0-60000 20000-60000
+OUTPUT_DIR := tmp
+OUTPUT_FILES := $(PROFILES:%=$(OUTPUT_DIR)/%.ps)
+
+run: $(OUTPUT_FILES)
 .PHONY: run
 
-tmp-dir:
-	mkdir -p tmp
+clean:
+	rm $(OUTPUT_FILES:%.ps=%.*)
+.PHONY: clean
+
+%.ps: %.hp
+	hp2ps -c $*
+	mv $(notdir $*).* $(OUTPUT_DIR)
+
+%.hp:
+	$(eval count = $(word 1,$(subst -, ,$(notdir $*))))
+	$(eval total = $(word 2,$(subst -, ,$(notdir $*))))
+	stack exec --work-dir .stack-work-profile -- conduit-memory-test $(count) $(total) +RTS -hc
+	mv conduit-memory-test.hp $@
+
+open:
+	open $(OUTPUT_FILES)
